@@ -1,6 +1,6 @@
 schema = "animus.plugin.v1"
 name = "animus-config-postgres"
-version = "0.1.3"
+version = "0.1.4"
 plugin_kind = "config_source"
 description = "Postgres config_source backend for Animus — reads/writes the LaunchApp portal team_{agent,workflow,phase} tables and emits the canonical WorkflowConfig (animus.workflow-config.v2) via config/load + config/write"
 

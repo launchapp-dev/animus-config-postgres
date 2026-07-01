@@ -154,17 +154,32 @@ pub struct Store {
 impl Store {
     /// Connect to the Postgres database at `url`.
     pub async fn open(url: &str) -> Result<Self> {
+        // LAZY connect: build the pool WITHOUT dialing Postgres so this plugin can
+        // answer the daemon's `initialize` handshake immediately. A synchronous
+        // cold DB connect here blocked startup and made the process miss the
+        // handshake deadline on (re)spawn, surfacing as "config_source plugin ...
+        // connection lost". `connect_lazy` defers the dial to the first query, so
+        // DB slowness degrades to a slow/retryable config/load RPC instead of a
+        // process death before the handshake.
         let pool = PgPoolOptions::new()
             // Tiny pool: config_source only reads team_* on config/load + reload,
             // and shares one Railway Postgres with Better Auth, subject-postgres,
             // and the team backend. Keep the shared connection budget under
             // Postgres `max_connections` ("too many clients").
             .max_connections(2)
-            .connect(url)
-            .await
-            .with_context(|| "failed to connect to Postgres database".to_string())?;
+            .connect_lazy(url)
+            .with_context(|| "failed to create Postgres pool".to_string())?;
         let store = Self { pool };
-        store.migrate().await?;
+        // Migrate in the BACKGROUND so the handshake is never blocked on a cold DB
+        // connect. Idempotent, so on every production re-spawn (schema present)
+        // it is a fast no-op; a transient failure is logged and retried by the
+        // next spawn rather than killing the process before it can serve.
+        let migrate_store = Self { pool: store.pool.clone() };
+        tokio::spawn(async move {
+            if let Err(error) = migrate_store.migrate().await {
+                eprintln!("[animus-config-postgres] background migrate failed (schema likely already present; retried on next spawn): {error:#}");
+            }
+        });
         Ok(store)
     }
 
