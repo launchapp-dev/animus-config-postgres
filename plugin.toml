@@ -1,0 +1,37 @@
+schema = "animus.plugin.v1"
+name = "animus-config-postgres"
+version = "0.1.1"
+plugin_kind = "config_source"
+description = "Postgres config_source backend for Animus — reads/writes the LaunchApp portal team_{agent,workflow,phase} tables and emits the canonical WorkflowConfig (animus.workflow-config.v2) via config/load + config/write"
+
+[capabilities]
+streaming = false
+progress = false
+cancellation = false
+# `methods` carries the RPC method names plus the `config_write` capability flag
+# (CAPABILITY_CONFIG_WRITE) the kernel gates config/write on.
+methods = [
+  "config/load",
+  "config/validate",
+  "config/write",
+  "config_write",
+  "health/check",
+]
+
+[binary]
+default = "animus-config-postgres"
+
+[[env]]
+key = "DATABASE_URL"
+description = "Postgres connection URL (e.g. postgres://user:pass@host:5432/dbname). The portal team_{agent,workflow,phase} tables live here."
+required = false
+
+[[env]]
+key = "ANIMUS_POSTGRES_URL"
+description = "Fallback Postgres connection URL used when DATABASE_URL is unset"
+required = false
+
+[[env]]
+key = "ANIMUS_CONFIG_TOOLS_ALLOWLIST"
+description = "Comma-separated tools_allowlist for command phases (default: bash,animus)"
+required = false

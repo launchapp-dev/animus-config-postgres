@@ -1,0 +1,41 @@
+[package]
+name = "animus-config-postgres"
+version = "0.1.2"
+edition = "2021"
+license = "Elastic-2.0"
+description = "Postgres config_source backend for Animus — reads/writes the LaunchApp portal team tables and emits the canonical WorkflowConfig (animus.workflow-config.v2) via config/load + config/write"
+repository = "https://github.com/launchapp-dev/animus-config-postgres"
+homepage = "https://github.com/launchapp-dev/animus-cli"
+readme = "README.md"
+default-run = "animus-config-postgres"
+
+[lib]
+name = "animus_config_postgres"
+path = "src/lib.rs"
+
+[[bin]]
+name = "animus-config-postgres"
+path = "src/main.rs"
+
+[dependencies]
+# Protocol crates live in launchapp-dev/animus-protocol (config-protocol +
+# protocol moved there in the ao-cli v0.6.1 migration). Pinned to v0.1.25, the
+# tag that adds the transport-asserted `actor: Option<Actor>` field to
+# ConfigLoadRequest/ConfigValidateRequest (the `animus-actor` crate) for
+# per-user config scoping. Keep all four unified on one tag.
+animus-plugin-protocol = { git = "https://github.com/launchapp-dev/animus-protocol", tag = "v0.1.25" }
+animus-plugin-runtime  = { git = "https://github.com/launchapp-dev/animus-protocol", tag = "v0.1.25" }
+animus-config-protocol = { git = "https://github.com/launchapp-dev/animus-protocol", tag = "v0.1.25" }
+animus-actor           = { git = "https://github.com/launchapp-dev/animus-protocol", tag = "v0.1.25" }
+
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", "io-util", "io-std"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+sqlx = { version = "0.7", default-features = false, features = ["runtime-tokio-rustls", "postgres", "json", "chrono"] }
+
+[dev-dependencies]
+tempfile = "3"
