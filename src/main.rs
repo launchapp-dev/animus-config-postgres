@@ -414,8 +414,9 @@ async fn health_response(id: Option<Value>, state: &AppState) -> RpcResponse {
 /// discriminator a pure mapping change (e.g. deriving `decision_contract` from
 /// `on_verdict` routing) is silently masked by the stale cached config.
 ///
-/// History: `m2` = derive `decision_contract` for verdict-routed phases.
-const MAPPING_VERSION: &str = "m2";
+/// History: `m2` = derive `decision_contract` for verdict-routed phases;
+/// `m3` = overlay that `decision_contract` through the blob merge (DESIGNER_KEYS).
+const MAPPING_VERSION: &str = "m3";
 
 /// A short, stable cache-discriminator for the resolved actor scope.
 ///

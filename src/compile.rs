@@ -447,8 +447,13 @@ fn merge_agent_profiles(blob: Option<&Value>, derived: &Value) -> Value {
 fn merge_phase_definitions(blob: Option<&Value>, derived: Option<&Value>) -> Value {
     let mut out = blob.and_then(Value::as_object).cloned().unwrap_or_default();
     if let Some(derived) = derived.and_then(Value::as_object) {
+        // `decision_contract` is Designer-derived (phase_def.rs emits it for any
+        // phase whose routing declares `on_verdict`), so it MUST overlay onto the
+        // blob base — otherwise a verdict-routed phase's decision_contract is
+        // dropped by the blob overlay and the runner never enforces/parses the
+        // verdict (the phase silently fallback-advances instead of reworking).
         const DESIGNER_KEYS: &[&str] =
-            &["mode", "agent_id", "directive", "command", "capabilities"];
+            &["mode", "agent_id", "directive", "command", "capabilities", "decision_contract"];
         for (name, d) in derived {
             let merged = match (out.get(name).and_then(Value::as_object), d.as_object()) {
                 (Some(b), Some(d)) => Value::Object(overlay_designer_keys(b, d, DESIGNER_KEYS)),
@@ -1378,5 +1383,30 @@ mod tests {
         let cfg =
             build_workflow_config(&sample_team(), &["bash".to_string(), "animus".to_string()]);
         println!("{}", serde_json::to_string_pretty(&cfg).unwrap());
+    }
+
+    #[test]
+    fn merge_overlays_decision_contract_from_derived_onto_blob() {
+        // Regression: a blob base def without decision_contract must receive the
+        // derived phase's decision_contract (a Designer-derived key), else a
+        // verdict-routed phase silently loses its contract and never reworks.
+        let blob = serde_json::json!({
+            "polish-blog": { "mode": "agent", "agent_id": "reviewer", "directive": "old" }
+        });
+        let derived = serde_json::json!({
+            "polish-blog": {
+                "mode": "agent", "agent_id": "reviewer", "directive": "new",
+                "decision_contract": { "allow_missing_decision": true }
+            }
+        });
+        let merged = merge_phase_definitions(Some(&blob), Some(&derived));
+        let pb = merged.get("polish-blog").and_then(Value::as_object).unwrap();
+        assert_eq!(
+            pb.get("decision_contract"),
+            Some(&serde_json::json!({ "allow_missing_decision": true })),
+            "decision_contract from derived must survive the blob overlay"
+        );
+        // Designer field still overlaid; non-designer blob fields still pass through.
+        assert_eq!(pb.get("directive"), Some(&serde_json::json!("new")));
     }
 }

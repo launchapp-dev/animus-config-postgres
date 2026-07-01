@@ -1,6 +1,6 @@
 [package]
 name = "animus-config-postgres"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 license = "Elastic-2.0"
 description = "Postgres config_source backend for Animus — reads/writes the LaunchApp portal team tables and emits the canonical WorkflowConfig (animus.workflow-config.v2) via config/load + config/write"
